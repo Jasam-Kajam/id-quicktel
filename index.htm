@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gas Connect</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    body { font-family: Arial; }
+    .listing { border:1px solid #ccc; padding:10px; margin:10px; }
+  </style>
+</head>
+<body>
+  <h1>Gas Cylinder Marketplace</h1>
+  <input type="text" id="searchLocation" placeholder="Enter city or location">
+  <button onclick="searchListings()">Search</button>
+  
+  <div id="listingsContainer"></div>
+  
+  <script>
+    // Firebase config (replace with your own)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAwAxP-MWwNnKP59PA6joil4Ceq10eozlc",
+      authDomain: "wafula-s-educational-posts.firebaseapp.com",
+      projectId: "wafula-s-educational-posts",
+      storageBucket: "wafula-s-educational-posts.appspot.com"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    function searchListings(){
+      const location = document.getElementById("searchLocation").value;
+      db.collection("listings")
+        .where("location", "==", location)
+        .get()
+        .then(snapshot => {
+          const container = document.getElementById("listingsContainer");
+          container.innerHTML = "";
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            container.innerHTML += `
+              <div class="listing">
+                <h3>${data.retailerName}</h3>
+                <p>Price: Ksh ${data.price}</p>
+                <p>Type: ${data.cylinderType}</p>
+                <p>Contact: <a href="tel:${data.contact}">${data.contact}</a></p>
+              </div>
+            `;
+          });
+        });
+    }
+  </script>
+</body>
+</html>
