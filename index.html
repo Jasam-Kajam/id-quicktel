@@ -1,54 +1,64 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Gas Connect</title>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <style>
-    body { font-family: Arial; }
-    .listing { border:1px solid #ccc; padding:10px; margin:10px; }
-  </style>
+  <title>GasHub Marketplace</title>
 </head>
-<body>
-  <h1>Gas Cylinder Marketplace</h1>
-  <input type="text" id="searchLocation" placeholder="Enter city or location">
-  <button onclick="searchListings()">Search</button>
-  
-  <div id="listingsContainer"></div>
-  
-  <script>
-    // Firebase config (replace with your own)
-    const firebaseConfig = {
-      apiKey: "AIzaSyAwAxP-MWwNnKP59PA6joil4Ceq10eozlc",
-      authDomain: "wafula-s-educational-posts.firebaseapp.com",
-      projectId: "wafula-s-educational-posts",
-      storageBucket: "wafula-s-educational-posts.appspot.com"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
 
-    function searchListings(){
-      const location = document.getElementById("searchLocation").value;
-      db.collection("listings")
-        .where("location", "==", location)
-        .get()
-        .then(snapshot => {
-          const container = document.getElementById("listingsContainer");
-          container.innerHTML = "";
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            container.innerHTML += `
-              <div class="listing">
-                <h3>${data.retailerName}</h3>
-                <p>Price: Ksh ${data.price}</p>
-                <p>Type: ${data.cylinderType}</p>
-                <p>Contact: <a href="tel:${data.contact}">${data.contact}</a></p>
-              </div>
-            `;
-          });
-        });
-    }
-  </script>
+<body>
+
+<h2>GasHub Marketplace</h2>
+
+<input id="title" placeholder="Cylinder title">
+<button onclick="addListing()">Post Listing</button>
+
+<ul id="list"></ul>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHxLJOZ5bdApAhSKOn2v9GtgrbsIxK_6A",
+  authDomain: "gashub-917f2.firebaseapp.com",
+  projectId: "gashub-917f2",
+  storageBucket: "gashub-917f2.firebasestorage.app",
+  messagingSenderId: "738809329471",
+  appId: "1:738809329471:web:8cde88a1ee187b1971c58a",
+  measurementId: "G-V0VZHX3JBF"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Add listing
+window.addListing = async function() {
+  const title = document.getElementById("title").value;
+
+  await addDoc(collection(db, "listings"), {
+    title: title,
+    created: Date.now()
+  });
+
+  loadListings();
+}
+
+// Load listings
+async function loadListings(){
+  const querySnapshot = await getDocs(collection(db,"listings"));
+  const list = document.getElementById("list");
+
+  list.innerHTML = "";
+
+  querySnapshot.forEach(doc=>{
+    list.innerHTML += `<li>${doc.data().title}</li>`;
+  });
+}
+
+loadListings();
+
+</script>
+
 </body>
 </html>
