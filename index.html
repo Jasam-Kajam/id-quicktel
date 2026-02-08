@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -7,7 +6,6 @@
 <title>Gas Hub Marketplace</title>
 
 <!-- Firebase SDKs -->
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
@@ -15,7 +13,7 @@
   import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-  // Your Firebase config
+  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyBHxLJOZ5bdApAhSKOn2v9GtgrbsIxK_6A",
     authDomain: "gashub-917f2.firebaseapp.com",
@@ -26,32 +24,128 @@
     measurementId: "G-V0VZHX3JBF"
   };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const storage = getStorage(app);
 
-  // Expose globally
+  // Make Firebase accessible globally
   window.auth = auth;
   window.db = db;
   window.storage = storage;
-  window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
-  window.signInWithEmailAndPassword = signInWithEmailAndPassword;
-  window.signOut = signOut;
-  window.collection = collection;
-  window.addDoc = addDoc;
-  window.getDocs = getDocs;
-  window.deleteDoc = deleteDoc;
-  window.doc = doc;
-  window.updateDoc = updateDoc;
-  window.ref = ref;
-  window.uploadBytes = uploadBytes;
-  window.getDownloadURL = getDownloadURL;
-  window.query = query;
-  window.orderBy = orderBy;
-  window.onAuthStateChanged = onAuthStateChanged;
+
+  // Auth functions
+  window.signup = async function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    try {
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      alert("Signup successful");
+      window.setupUser(res.user);
+    } catch(err) { alert(err.message); }
+  }
+
+  window.login = async function() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    try {
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      alert("Login successful");
+      window.setupUser(res.user);
+    } catch(err) { alert(err.message); }
+  }
+
+  window.logout = async function() {
+    await signOut(auth);
+    location.reload();
+  }
+
+  // Global setupUser
+  window.setupUser = function(user) {
+    currentUser = user;
+    authCard.style.display="none";
+    postCard.style.display="block";
+    logoutBtn.style.display="inline-block";
+    userBox.innerHTML="Logged in as <b>"+user.email+"</b>";
+    renderListings();
+  }
+
+  // Auth state listener
+  onAuthStateChanged(auth, user => { if(user) window.setupUser(user); });
+
+  // Firestore setup
+  const listingsCol = collection(db,"listings");
+  let currentUser = null;
+
+  // Add listing
+  window.addListing = async function() {
+    const file = document.getElementById("image").files[0];
+    let imgUrl = "";
+    if(file){
+      const storageRef = ref(storage,"images/"+file.name+Date.now());
+      await uploadBytes(storageRef,file);
+      imgUrl = await getDownloadURL(storageRef);
+    }
+
+    const data = {
+      user: currentUser.email,
+      name: document.getElementById("name").value,
+      phone: document.getElementById("phone").value,
+      location: document.getElementById("location").value,
+      price: document.getElementById("price").value,
+      size: document.getElementById("size").value,
+      img: imgUrl,
+      boosted: false,
+      createdAt: new Date()
+    };
+    await addDoc(listingsCol, data);
+    renderListings();
+  }
+
+  // Boost listing
+  window.boostListing = async function(id) {
+    const docRef = doc(db,"listings",id);
+    await updateDoc(docRef,{boosted:true});
+    alert("Boosted! (M-PESA payment integration pending)");
+    renderListings();
+  }
+
+  // Delete listing
+  window.deleteListing = async function(id){
+    if(confirm("Delete listing?")){
+      await deleteDoc(doc(db,"listings",id));
+      renderListings();
+    }
+  }
+
+  // Render listings
+  window.renderListings = async function(){
+    const searchText = document.getElementById("search").value.toLowerCase();
+    const querySnap = await getDocs(query(listingsCol,orderBy("boosted","desc")));
+    const container = document.getElementById("listings");
+    container.innerHTML = "";
+    querySnap.forEach(docSnap=>{
+      const l = docSnap.data();
+      const id = docSnap.id;
+      if(!l.location.toLowerCase().includes(searchText)) return;
+      container.innerHTML+=`
+        <div class="listing">
+          ${l.img?`<img src="${l.img}">`:""}
+          <b>${l.name}</b><br>
+          Size: ${l.size}<br>
+          Price: KES ${l.price}<br>
+          Location: ${l.location}<br>
+          ${l.boosted?"⭐ Boosted<br>":""}
+          <a href="https://wa.me/${l.phone}" target="_blank"><button>WhatsApp Seller</button></a>
+          <a href="https://www.google.com/maps/search/?api=1&query=${l.location}" target="_blank"><button>Open Map</button></a>
+          <button class="boost" onclick="boostListing('${id}')">Boost</button>
+          ${l.user===currentUser.email?`<button onclick="deleteListing('${id}')">Delete</button>`:""}
+        </div>
+      `;
+    });
+  }
+
 </script>
 
 <style>
@@ -67,7 +161,6 @@ button:hover{background:#095c29;}
 img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
 .small{font-size:13px;color:#555;}
 </style>
-
 </head>
 
 <body>
@@ -81,7 +174,6 @@ img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
 <div class="container">
 
 <!-- AUTH -->
-
 <div class="card" id="authCard">
 <h3>Login / Signup</h3>
 <input id="email" placeholder="Email">
@@ -91,7 +183,6 @@ img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
 </div>
 
 <!-- POST LISTING -->
-
 <div class="card" id="postCard" style="display:none">
 <h3>Post Listing</h3>
 <input id="name" placeholder="Seller Name">
@@ -108,128 +199,16 @@ img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
 </div>
 
 <!-- SEARCH -->
-
 <div class="card">
 <h3>Search</h3>
 <input id="search" placeholder="Search by location..." onkeyup="renderListings()">
 </div>
 
 <!-- LISTINGS -->
-
 <div class="card">
 <h3>Available Listings</h3>
 <div id="listings"></div>
 </div>
-
-<script type="module">
-
-let currentUser = null;
-
-const authCard = document.getElementById("authCard");
-const postCard = document.getElementById("postCard");
-const userBox = document.getElementById("userBox");
-const logoutBtn = document.getElementById("logoutBtn");
-const listingsCol = collection(db,"listings");
-
-function signup(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  createUserWithEmailAndPassword(auth,email,password)
-  .then(res=>{alert("Signup successful");setupUser(res.user);})
-  .catch(err=>alert(err.message));
-}
-
-function login(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  signInWithEmailAndPassword(auth,email,password)
-  .then(res=>{alert("Login successful");setupUser(res.user);})
-  .catch(err=>alert(err.message));
-}
-
-function logout(){
-  signOut(auth).then(()=>location.reload());
-}
-
-function setupUser(user){
-  currentUser = user;
-  authCard.style.display="none";
-  postCard.style.display="block";
-  logoutBtn.style.display="inline-block";
-  userBox.innerHTML="Logged in as <b>"+user.email+"</b>";
-  renderListings();
-}
-
-onAuthStateChanged(auth,user=>{
-  if(user) setupUser(user);
-});
-
-async function addListing(){
-  const file = document.getElementById("image").files[0];
-  let imgUrl="";
-  if(file){
-    const storageRef = ref(storage,"images/"+file.name+Date.now());
-    await uploadBytes(storageRef,file);
-    imgUrl = await getDownloadURL(storageRef);
-  }
-
-  const data = {
-    user:currentUser.email,
-    name:document.getElementById("name").value,
-    phone:document.getElementById("phone").value,
-    location:document.getElementById("location").value,
-    price:document.getElementById("price").value,
-    size:document.getElementById("size").value,
-    img:imgUrl,
-    boosted:false,
-    createdAt: new Date()
-  };
-
-  await addDoc(listingsCol,data);
-  renderListings();
-}
-
-async function boostListing(id){
-  const docRef = doc(db,"listings",id);
-  await updateDoc(docRef,{boosted:true});
-  alert("Boosted! (M-PESA payment will be integrated later)");
-  renderListings();
-}
-
-async function deleteListing(id){
-  if(confirm("Delete listing?")){
-    await deleteDoc(doc(db,"listings",id));
-    renderListings();
-  }
-}
-
-async function renderListings(){
-  const searchText = document.getElementById("search").value.toLowerCase();
-  const querySnap = await getDocs(query(listingsCol,orderBy("boosted","desc")));
-  const container = document.getElementById("listings");
-  container.innerHTML="";
-  querySnap.forEach(docSnap=>{
-    const l = docSnap.data();
-    const id = docSnap.id;
-    if(!l.location.toLowerCase().includes(searchText)) return;
-    container.innerHTML+=`
-      <div class="listing">
-        ${l.img?`<img src="${l.img}">`:""}
-        <b>${l.name}</b><br>
-        Size: ${l.size}<br>
-        Price: KES ${l.price}<br>
-        Location: ${l.location}<br>
-        ${l.boosted?"⭐ Boosted<br>":""}
-        <a href="https://wa.me/${l.phone}" target="_blank"><button>WhatsApp Seller</button></a>
-        <a href="https://www.google.com/maps/search/?api=1&query=${l.location}" target="_blank"><button>Open Map</button></a>
-        <button class="boost" onclick="boostListing('${id}')">Boost</button>
-        ${l.user===currentUser.email?`<button onclick="deleteListing('${id}')">Delete</button>`:""}
-      </div>
-    `;
-  });
-}
-
-</script>
 
 </body>
 </html>
