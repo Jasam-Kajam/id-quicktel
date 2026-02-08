@@ -4,32 +4,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gas Cylinder Marketplace</title>
+<title>Gas Hub Marketplace</title>
 
 <!-- Firebase SDKs -->
 
 <script type="module">
-  // Import Firebase modules
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-analytics.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-storage.js";
 
-  // TODO: Replace with your Firebase config
+  // Your Firebase config
   const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
+    apiKey: "AIzaSyBHxLJOZ5bdApAhSKOn2v9GtgrbsIxK_6A",
+    authDomain: "gashub-917f2.firebaseapp.com",
+    projectId: "gashub-917f2",
+    storageBucket: "gashub-917f2.firebasestorage.app",
+    messagingSenderId: "738809329471",
+    appId: "1:738809329471:web:8cde88a1ee187b1971c58a",
+    measurementId: "G-V0VZHX3JBF"
   };
 
+  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const storage = getStorage(app);
 
+  // Expose globally
   window.auth = auth;
   window.db = db;
   window.storage = storage;
@@ -47,6 +51,7 @@
   window.getDownloadURL = getDownloadURL;
   window.query = query;
   window.orderBy = orderBy;
+  window.onAuthStateChanged = onAuthStateChanged;
 </script>
 
 <style>
@@ -68,7 +73,7 @@ img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
 <body>
 
 <header>
-<h2>Gas Cylinder Marketplace</h2>
+<h2>Gas Hub Marketplace</h2>
 <div id="userBox"></div>
 <button onclick="logout()" id="logoutBtn" style="display:none">Logout</button>
 </header>
@@ -124,7 +129,6 @@ const authCard = document.getElementById("authCard");
 const postCard = document.getElementById("postCard");
 const userBox = document.getElementById("userBox");
 const logoutBtn = document.getElementById("logoutBtn");
-
 const listingsCol = collection(db,"listings");
 
 function signup(){
@@ -156,8 +160,6 @@ function setupUser(user){
   renderListings();
 }
 
-// Listen for auth state
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 onAuthStateChanged(auth,user=>{
   if(user) setupUser(user);
 });
@@ -190,7 +192,7 @@ async function addListing(){
 async function boostListing(id){
   const docRef = doc(db,"listings",id);
   await updateDoc(docRef,{boosted:true});
-  alert("Boosted! (M-PESA payment would be triggered here)");
+  alert("Boosted! (M-PESA payment will be integrated later)");
   renderListings();
 }
 
@@ -218,10 +220,8 @@ async function renderListings(){
         Price: KES ${l.price}<br>
         Location: ${l.location}<br>
         ${l.boosted?"⭐ Boosted<br>":""}
-        <a href="https://wa.me/${l.phone}" target="_blank">
-          <button>WhatsApp Seller</button></a>
-        <a href="https://www.google.com/maps/search/?api=1&query=${l.location}" target="_blank">
-          <button>Open Map</button></a>
+        <a href="https://wa.me/${l.phone}" target="_blank"><button>WhatsApp Seller</button></a>
+        <a href="https://www.google.com/maps/search/?api=1&query=${l.location}" target="_blank"><button>Open Map</button></a>
         <button class="boost" onclick="boostListing('${id}')">Boost</button>
         ${l.user===currentUser.email?`<button onclick="deleteListing('${id}')">Delete</button>`:""}
       </div>
