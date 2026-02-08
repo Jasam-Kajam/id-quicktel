@@ -1,62 +1,201 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
 <head>
-  <title>GasHub Marketplace</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gas Cylinder Marketplace</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    margin:0;
+    background:#f2f2f2;
+}
+
+header{
+    background:#0a7d36;
+    color:white;
+    text-align:center;
+    padding:18px;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:15px;
+}
+
+.card{
+    background:white;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:10px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.1);
+}
+
+input, select, button{
+    width:100%;
+    padding:10px;
+    margin:6px 0;
+    border-radius:6px;
+    border:1px solid #ccc;
+}
+
+button{
+    background:#0a7d36;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#095c29;
+}
+
+.boost{
+    background:orange;
+}
+
+.listing{
+    border-top:1px solid #ddd;
+    padding:12px 0;
+}
+
+img{
+    width:100%;
+    max-height:200px;
+    object-fit:cover;
+    border-radius:8px;
+}
+</style>
+
 </head>
 
 <body>
 
-<h2>GasHub Marketplace</h2>
+<header>
+<h2>Gas Cylinder Marketplace</h2>
+<p>Connect buyers with gas sellers</p>
+</header>
 
-<input id="title" placeholder="Cylinder title">
+<div class="container">
+
+<div class="card">
+<h3>Post Listing</h3>
+
+<input id="name" placeholder="Seller Name">
+<input id="location" placeholder="Location">
+<input id="price" placeholder="Price (KES)">
+<select id="size">
+<option>6kg</option>
+<option>13kg</option>
+<option>50kg</option>
+</select>
+
+<input type="file" id="image">
+
 <button onclick="addListing()">Post Listing</button>
 
-<ul id="list"></ul>
+</div>
 
-<script type="module">
+<div class="card">
+<h3>Search Listings</h3>
+<input id="search" placeholder="Search by location..." onkeyup="renderListings()">
+</div>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } 
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<div class="card">
+<h3>Available Listings</h3>
+<div id="listings"></div>
+</div>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBHxLJOZ5bdApAhSKOn2v9GtgrbsIxK_6A",
-  authDomain: "gashub-917f2.firebaseapp.com",
-  projectId: "gashub-917f2",
-  storageBucket: "gashub-917f2.firebasestorage.app",
-  messagingSenderId: "738809329471",
-  appId: "1:738809329471:web:8cde88a1ee187b1971c58a",
-  measurementId: "G-V0VZHX3JBF"
-};
+</div>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+<script>
 
-// Add listing
-window.addListing = async function() {
-  const title = document.getElementById("title").value;
+let listings = JSON.parse(localStorage.getItem("gasListings")) || [];
 
-  await addDoc(collection(db, "listings"), {
-    title: title,
-    created: Date.now()
-  });
-
-  loadListings();
+function save(){
+    localStorage.setItem("gasListings", JSON.stringify(listings));
 }
 
-// Load listings
-async function loadListings(){
-  const querySnapshot = await getDocs(collection(db,"listings"));
-  const list = document.getElementById("list");
+function addListing(){
 
-  list.innerHTML = "";
+    let file = document.getElementById("image").files[0];
 
-  querySnapshot.forEach(doc=>{
-    list.innerHTML += `<li>${doc.data().title}</li>`;
-  });
+    if(file){
+        let reader = new FileReader();
+
+        reader.onload = function(){
+            createListing(reader.result);
+        }
+
+        reader.readAsDataURL(file);
+
+    }else{
+        createListing("");
+    }
 }
 
-loadListings();
+function createListing(img){
+
+    let listing = {
+        name: document.getElementById("name").value,
+        location: document.getElementById("location").value,
+        price: document.getElementById("price").value,
+        size: document.getElementById("size").value,
+        img: img,
+        boosted:false
+    };
+
+    listings.push(listing);
+    save();
+    renderListings();
+}
+
+function boost(index){
+    listings[index].boosted = true;
+
+    listings.sort((a,b)=> b.boosted - a.boosted);
+
+    save();
+    renderListings();
+
+    alert("Listing boosted! (M-PESA payment would go here 🙂)");
+}
+
+function renderListings(){
+
+    let searchText = document.getElementById("search").value.toLowerCase();
+
+    let container = document.getElementById("listings");
+    container.innerHTML="";
+
+    listings.forEach((l,i)=>{
+
+        if(!l.location.toLowerCase().includes(searchText)) return;
+
+        container.innerHTML += `
+        <div class="listing">
+
+            ${l.img ? `<img src="${l.img}">` : ""}
+
+            <b>${l.name}</b><br>
+            Location: ${l.location}<br>
+            Size: ${l.size}<br>
+            Price: KES ${l.price}<br>
+            ${l.boosted ? "⭐ Boosted<br>" : ""}
+
+            <button class="boost" onclick="boost(${i})">
+            Boost Listing
+            </button>
+
+        </div>
+        `;
+    });
+}
+
+renderListings();
 
 </script>
 
