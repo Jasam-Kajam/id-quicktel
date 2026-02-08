@@ -1,73 +1,23 @@
 <!DOCTYPE html>
 
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gas Cylinder Marketplace</title>
+<title>Gas Marketplace</title>
 
 <style>
-body{
-    font-family: Arial, sans-serif;
-    margin:0;
-    background:#f2f2f2;
-}
-
-header{
-    background:#0a7d36;
-    color:white;
-    text-align:center;
-    padding:18px;
-}
-
-.container{
-    max-width:900px;
-    margin:auto;
-    padding:15px;
-}
-
-.card{
-    background:white;
-    padding:15px;
-    margin-bottom:20px;
-    border-radius:10px;
-    box-shadow:0 3px 8px rgba(0,0,0,0.1);
-}
-
-input, select, button{
-    width:100%;
-    padding:10px;
-    margin:6px 0;
-    border-radius:6px;
-    border:1px solid #ccc;
-}
-
-button{
-    background:#0a7d36;
-    color:white;
-    border:none;
-    cursor:pointer;
-}
-
-button:hover{
-    background:#095c29;
-}
-
-.boost{
-    background:orange;
-}
-
-.listing{
-    border-top:1px solid #ddd;
-    padding:12px 0;
-}
-
-img{
-    width:100%;
-    max-height:200px;
-    object-fit:cover;
-    border-radius:8px;
-}
+body{font-family:Arial;margin:0;background:#f2f2f2;}
+header{background:#0a7d36;color:white;text-align:center;padding:15px;}
+.container{max-width:900px;margin:auto;padding:15px;}
+.card{background:white;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 3px 8px rgba(0,0,0,0.1);}
+input,select,button{width:100%;padding:10px;margin:6px 0;border-radius:6px;border:1px solid #ccc;}
+button{background:#0a7d36;color:white;border:none;cursor:pointer;}
+button:hover{background:#095c29;}
+.listing{border-top:1px solid #ddd;padding:12px 0;}
+.boost{background:orange;}
+img{width:100%;max-height:200px;object-fit:cover;border-radius:8px;}
+.small{font-size:13px;color:#555}
 </style>
 
 </head>
@@ -76,15 +26,26 @@ img{
 
 <header>
 <h2>Gas Cylinder Marketplace</h2>
-<p>Connect buyers with gas sellers</p>
+<div id="userBox"></div>
 </header>
 
 <div class="container">
 
-<div class="card">
+<!-- LOGIN -->
+
+<div class="card" id="loginCard">
+<h3>Login</h3>
+<input id="username" placeholder="Username">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- POST -->
+
+<div class="card" id="postCard" style="display:none">
 <h3>Post Listing</h3>
 
 <input id="name" placeholder="Seller Name">
+<input id="phone" placeholder="WhatsApp Number (254...)">
 <input id="location" placeholder="Location">
 <input id="price" placeholder="Price (KES)">
 <select id="size">
@@ -92,20 +53,23 @@ img{
 <option>13kg</option>
 <option>50kg</option>
 </select>
-
 <input type="file" id="image">
 
-<button onclick="addListing()">Post Listing</button>
+<button onclick="detectLocation()">Auto Detect Location</button> <button onclick="addListing()">Post Listing</button>
 
 </div>
 
-<div class="card">
-<h3>Search Listings</h3>
-<input id="search" placeholder="Search by location..." onkeyup="renderListings()">
-</div>
+<!-- SEARCH -->
 
 <div class="card">
-<h3>Available Listings</h3>
+<h3>Search</h3>
+<input id="search" placeholder="Search location..." onkeyup="render()">
+</div>
+
+<!-- RESULTS -->
+
+<div class="card">
+<h3>Listings</h3>
 <div id="listings"></div>
 </div>
 
@@ -113,89 +77,131 @@ img{
 
 <script>
 
+let currentUser = localStorage.getItem("user");
 let listings = JSON.parse(localStorage.getItem("gasListings")) || [];
 
 function save(){
-    localStorage.setItem("gasListings", JSON.stringify(listings));
+localStorage.setItem("gasListings", JSON.stringify(listings));
+}
+
+function login(){
+let u = username.value;
+if(!u) return alert("Enter username");
+localStorage.setItem("user",u);
+location.reload();
+}
+
+function setupUser(){
+if(currentUser){
+userBox.innerHTML="Logged in as <b>"+currentUser+"</b>";
+loginCard.style.display="none";
+postCard.style.display="block";
+}
+}
+setupUser();
+
+function detectLocation(){
+navigator.geolocation.getCurrentPosition(pos=>{
+location.value = pos.coords.latitude + "," + pos.coords.longitude;
+alert("Location detected!");
+});
 }
 
 function addListing(){
 
-    let file = document.getElementById("image").files[0];
+let file=image.files[0];
 
-    if(file){
-        let reader = new FileReader();
-
-        reader.onload = function(){
-            createListing(reader.result);
-        }
-
-        reader.readAsDataURL(file);
-
-    }else{
-        createListing("");
-    }
+if(file){
+let reader=new FileReader();
+reader.onload=function(){
+createListing(reader.result);
+}
+reader.readAsDataURL(file);
+}else{
+createListing("");
+}
 }
 
 function createListing(img){
-
-    let listing = {
-        name: document.getElementById("name").value,
-        location: document.getElementById("location").value,
-        price: document.getElementById("price").value,
-        size: document.getElementById("size").value,
-        img: img,
-        boosted:false
-    };
-
-    listings.push(listing);
-    save();
-    renderListings();
+let listing={
+user:currentUser,
+name:name.value,
+phone:phone.value,
+location:location.value,
+price:price.value,
+size:size.value,
+img:img,
+boosted:false
+};
+listings.push(listing);
+save();
+render();
 }
 
-function boost(index){
-    listings[index].boosted = true;
-
-    listings.sort((a,b)=> b.boosted - a.boosted);
-
-    save();
-    renderListings();
-
-    alert("Listing boosted! (M-PESA payment would go here 🙂)");
+function boost(i){
+alert("Simulating M-PESA payment of KES 49...");
+listings[i].boosted=true;
+listings.sort((a,b)=>b.boosted-a.boosted);
+save();
+render();
 }
 
-function renderListings(){
-
-    let searchText = document.getElementById("search").value.toLowerCase();
-
-    let container = document.getElementById("listings");
-    container.innerHTML="";
-
-    listings.forEach((l,i)=>{
-
-        if(!l.location.toLowerCase().includes(searchText)) return;
-
-        container.innerHTML += `
-        <div class="listing">
-
-            ${l.img ? `<img src="${l.img}">` : ""}
-
-            <b>${l.name}</b><br>
-            Location: ${l.location}<br>
-            Size: ${l.size}<br>
-            Price: KES ${l.price}<br>
-            ${l.boosted ? "⭐ Boosted<br>" : ""}
-
-            <button class="boost" onclick="boost(${i})">
-            Boost Listing
-            </button>
-
-        </div>
-        `;
-    });
+function del(i){
+if(confirm("Delete listing?")){
+listings.splice(i,1);
+save();
+render();
+}
 }
 
-renderListings();
+function edit(i){
+let p=prompt("New price",listings[i].price);
+if(p){
+listings[i].price=p;
+save();
+render();
+}
+}
+
+function render(){
+let s=search.value.toLowerCase();
+listings.innerHTML="";
+let box=document.getElementById("listings");
+box.innerHTML="";
+
+listings.forEach((l,i)=>{
+if(!l.location.toLowerCase().includes(s)) return;
+
+box.innerHTML+=`
+<div class="listing">
+
+${l.img?`<img src="${l.img}">`:""}
+
+<b>${l.name}</b><br>
+Size: ${l.size}<br>
+Price: KES ${l.price}<br>
+Location: ${l.location}<br>
+${l.boosted?"⭐ Boosted<br>":""}
+
+<a href="https://wa.me/${l.phone}" target="_blank">
+<button>WhatsApp Seller</button></a>
+
+<a href="https://www.google.com/maps/search/?api=1&query=${l.location}" target="_blank">
+<button>Open Map</button></a>
+
+<button class="boost" onclick="boost(${i})">Boost</button>
+
+${l.user===currentUser?`
+<button onclick="edit(${i})">Edit</button>
+<button onclick="del(${i})">Delete</button>
+`:""}
+
+</div>
+`;
+});
+}
+
+render();
 
 </script>
 
